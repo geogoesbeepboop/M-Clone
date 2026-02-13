@@ -56,7 +56,7 @@ struct ManageCategoriesView: View {
             }
         }
         .sheet(isPresented: $showAddForm) {
-            AddCategoryView { name, emoji, limit, category in
+            AddBudgetCategoryView { name, emoji, limit, category in
                 viewModel.addCategory(name: name, emoji: emoji, limit: limit, category: category)
             }
         }
@@ -65,7 +65,7 @@ struct ManageCategoriesView: View {
 
 // MARK: - Add Category Form
 
-private struct AddCategoryView: View {
+struct AddBudgetCategoryView: View {
     @Environment(\.dismiss) private var dismiss
     let onAdd: (String, String, Double, TransactionCategory) -> Void
 

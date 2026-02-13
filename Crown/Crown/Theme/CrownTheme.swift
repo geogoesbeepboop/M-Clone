@@ -27,10 +27,24 @@ enum CrownTheme {
     static let expense = Color(hex: 0xE31837)   // money-out red (matches BofA red)
     static let warning = Color(hex: 0xE57200)   // amber
 
-    /// Budget progress bar — teal, distinct from BofA blue divider
-    static let budgetProgress     = Color(hex: 0x00897B)  // teal 600
-    /// Budget over-budget — amber/orange, distinct from BofA red divider
-    static let budgetOverProgress = Color(hex: 0xE57200)  // amber (same as warning)
+    /// Budget progress — green (under 75%), yellow (75–100%), red (over 100%)
+    static let budgetGreen = Color(hex: 0x28A745)  // success green
+    static let budgetYellow = Color(hex: 0xE5A100) // warning amber
+    static let budgetRed   = Color(hex: 0xDC3545)  // danger red
+
+    /// Kept for legacy call-sites — maps to green
+    static let budgetProgress     = budgetGreen
+    /// Kept for legacy call-sites — maps to red
+    static let budgetOverProgress = budgetRed
+
+    /// Returns the appropriate budget color for a given progress ratio.
+    static func budgetColor(for progress: Double) -> Color {
+        switch progress {
+        case ..<0.75:  return budgetGreen
+        case 0.75...1: return budgetYellow
+        default:       return budgetRed
+        }
+    }
 
     // MARK: - Adaptive Backgrounds (auto light/dark)
 

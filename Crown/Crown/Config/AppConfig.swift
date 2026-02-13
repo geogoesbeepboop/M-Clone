@@ -20,12 +20,65 @@ enum AppConfig {
     // MARK: - Claude
     // TODO: PRODUCTION — route Claude requests through a backend proxy.
     static let claudeAPIKey: String = ProcessInfo.processInfo.environment["CLAUDE_API_KEY"] ?? ""
-    static let claudeModel:  String = "claude-sonnet-4-20250514"
     static let claudeAPIVersion = "2023-06-01"
+
+    // MARK: - Claude Model Selection (persisted in UserDefaults)
+
+    private static let claudeModelKey = "crownClaudeModel"
+
+    /// The selected Claude model variant. Defaults to `.sonnet`.
+    static var selectedClaudeModel: ClaudeModel {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: claudeModelKey),
+                  let model = ClaudeModel(rawValue: raw)
+            else { return .sonnet }
+            return model
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: claudeModelKey)
+        }
+    }
+
+    /// The model ID string sent to the Anthropic API.
+    static var claudeModel: String { selectedClaudeModel.rawValue }
 
     // MARK: - Feature Flags
     static var isPlaidConfigured: Bool { !plaidClientId.isEmpty && !plaidSecret.isEmpty }
     static var isClaudeConfigured: Bool { !claudeAPIKey.isEmpty }
+
+    // MARK: - Chat Model Provider (persisted in UserDefaults)
+
+    private static let chatModelKey = "crownChatModelProvider"
+
+    /// The selected chat model provider. Defaults to `.claude`.
+    static var chatModelProvider: ChatModelProvider {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: chatModelKey),
+                  let provider = ChatModelProvider(rawValue: raw)
+            else { return .claude }
+            return provider
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: chatModelKey)
+        }
+    }
+
+    // MARK: - Streaming Toggle (persisted in UserDefaults)
+
+    private static let streamingKey = "crownStreamingEnabled"
+
+    /// Whether AI responses stream token-by-token. Defaults to `true`.
+    static var streamingEnabled: Bool {
+        get {
+            guard UserDefaults.standard.object(forKey: streamingKey) != nil else {
+                return true  // default: streaming on
+            }
+            return UserDefaults.standard.bool(forKey: streamingKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: streamingKey)
+        }
+    }
 
     // MARK: - Appearance (persisted in UserDefaults)
 
@@ -54,6 +107,72 @@ enum AppConfig {
         }
         set {
             UserDefaults.standard.set(newValue, forKey: mockDataKey)
+        }
+    }
+}
+
+// MARK: - Chat Model Provider Enum
+
+/// Available AI model providers for the chat feature.
+enum ChatModelProvider: String, CaseIterable, Identifiable {
+    case claude = "claude"
+    case foundationModel = "foundationModel"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .claude:          return "Claude"
+        case .foundationModel: return "Apple Intelligence"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .claude:          return "sparkles"
+        case .foundationModel: return "apple.logo"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .claude:          return "Anthropic's Claude API (requires API key)"
+        case .foundationModel: return "On-device Apple Foundation Model"
+        }
+    }
+}
+
+// MARK: - Claude Model Variants
+
+/// Available Claude model variants — Sonnet (balanced), Opus (most capable), Haiku (fastest).
+enum ClaudeModel: String, CaseIterable, Identifiable {
+    case sonnet = "claude-sonnet-4-5-20250929"
+    case opus   = "claude-opus-4-6"
+    case haiku  = "claude-haiku-4-5-20251001"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .sonnet: return "Sonnet 4.5"
+        case .opus:   return "Opus 4.6"
+        case .haiku:  return "Haiku 4.5"
+        }
+    }
+
+    var shortName: String {
+        switch self {
+        case .sonnet: return "Sonnet"
+        case .opus:   return "Opus"
+        case .haiku:  return "Haiku"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .sonnet: return "Balanced speed and intelligence"
+        case .opus:   return "Most capable, best for complex analysis"
+        case .haiku:  return "Fastest responses, great for quick questions"
         }
     }
 }

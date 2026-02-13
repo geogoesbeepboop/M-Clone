@@ -31,7 +31,20 @@ final class AccountRepository: AccountRepositoryProtocol {
     }
 
     func fetchVisible() -> [Account] {
-        fetchAll().filter { !$0.isHidden }
+        let visible = fetchAll().filter { !$0.isHidden }
+        return filterByDataMode(visible)
+    }
+
+    /// Filters accounts based on the current data mode setting.
+    /// - Mock ON: show only mock accounts (no plaidAccountId)
+    /// - Mock OFF: show only Plaid accounts; fall back to all if no Plaid accounts exist
+    private func filterByDataMode(_ accounts: [Account]) -> [Account] {
+        if AppConfig.useMockData {
+            return accounts.filter { $0.plaidAccountId == nil }
+        } else {
+            let plaid = accounts.filter { $0.plaidAccountId != nil }
+            return plaid.isEmpty ? accounts : plaid
+        }
     }
 
     func fetchAssets() -> [Account] {

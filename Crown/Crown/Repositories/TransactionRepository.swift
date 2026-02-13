@@ -26,11 +26,15 @@ final class TransactionRepository: TransactionRepositoryProtocol {
     }
 
     func fetchAll(limit: Int? = nil) -> [Transaction] {
-        var descriptor = FetchDescriptor<Transaction>(
+        let descriptor = FetchDescriptor<Transaction>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
-        descriptor.fetchLimit = limit
-        return (try? modelContext.fetch(descriptor)) ?? []
+        let all = (try? modelContext.fetch(descriptor)) ?? []
+        let filtered = filterByDataMode(all)
+        if let limit {
+            return Array(filtered.prefix(limit))
+        }
+        return filtered
     }
 
     func fetchForMonth(month: Int, year: Int) -> [Transaction] {
@@ -47,12 +51,13 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             predicate: #Predicate { $0.date >= start && $0.date <= end },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
-        return (try? modelContext.fetch(descriptor)) ?? []
+        let results = (try? modelContext.fetch(descriptor)) ?? []
+        return filterByDataMode(results)
     }
 
     func fetchForAccount(_ account: Account) -> [Transaction] {
-        // Leverage the SwiftData relationship loaded in memory
-        return account.transactions.sorted { $0.date > $1.date }
+        let results = account.transactions.sorted { $0.date > $1.date }
+        return filterByDataMode(results)
     }
 
     func fetchForCategory(_ category: TransactionCategory, month: Int, year: Int) -> [Transaction] {
@@ -65,7 +70,20 @@ final class TransactionRepository: TransactionRepositoryProtocol {
             predicate: #Predicate { $0.isPending == true },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
-        return (try? modelContext.fetch(descriptor)) ?? []
+        let results = (try? modelContext.fetch(descriptor)) ?? []
+        return filterByDataMode(results)
+    }
+
+    /// Filters transactions based on the current data mode setting.
+    /// - Mock ON: show only mock transactions (no plaidTransactionId)
+    /// - Mock OFF: show only Plaid transactions; fall back to all if none exist
+    private func filterByDataMode(_ transactions: [Transaction]) -> [Transaction] {
+        if AppConfig.useMockData {
+            return transactions.filter { $0.plaidTransactionId == nil }
+        } else {
+            let plaid = transactions.filter { $0.plaidTransactionId != nil }
+            return plaid.isEmpty ? transactions : plaid
+        }
     }
 
     func fetchByPlaidTransactionId(_ plaidId: String) -> Transaction? {

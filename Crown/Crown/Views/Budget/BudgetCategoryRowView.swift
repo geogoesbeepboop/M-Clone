@@ -47,7 +47,7 @@ struct BudgetCategoryRowView: View {
 
             ProgressBarView(
                 progress: progress,
-                tint: CrownTheme.budgetProgress
+                tint: CrownTheme.budgetColor(for: progress)
             )
 
             // Over-budget warning
@@ -55,10 +55,10 @@ struct BudgetCategoryRowView: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption)
-                        .foregroundStyle(CrownTheme.budgetOverProgress)
+                        .foregroundStyle(CrownTheme.budgetRed)
                     Text("Over budget by \(abs(remaining), format: .currency(code: "USD").precision(.fractionLength(0)))")
                         .font(CrownTheme.captionFont)
-                        .foregroundStyle(CrownTheme.budgetOverProgress)
+                        .foregroundStyle(CrownTheme.budgetRed)
                     Spacer()
                 }
             }

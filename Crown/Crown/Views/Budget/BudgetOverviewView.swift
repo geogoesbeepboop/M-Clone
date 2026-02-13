@@ -26,8 +26,15 @@ struct BudgetOverviewView: View {
         .navigationTitle("Budget")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .topBarLeading) {
                 HStack(spacing: 4) {
+                    Button {
+                        viewModel?.showAddCategory = true
+                    } label: {
+                        Image(systemName: "plus.circle")
+                            .foregroundStyle(CrownTheme.primaryBlue)
+                    }
+
                     if let vm = viewModel {
                         NavigationLink {
                             ManageCategoriesView(viewModel: vm)
@@ -36,6 +43,19 @@ struct BudgetOverviewView: View {
                                 .foregroundStyle(CrownTheme.primaryBlue)
                         }
                     }
+                }
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 4) {
+                    Button {
+                        viewModel?.sortAscending.toggle()
+                    } label: {
+                        Image(systemName: viewModel?.sortAscending == true
+                            ? "arrow.up.arrow.down.circle.fill"
+                            : "arrow.up.arrow.down.circle")
+                            .foregroundStyle(CrownTheme.primaryBlue)
+                    }
 
                     Button {
                         showChat.wrappedValue = true
@@ -43,6 +63,16 @@ struct BudgetOverviewView: View {
                         Image(systemName: "bubble.left.and.bubble.right.fill")
                             .foregroundStyle(CrownTheme.primaryBlue)
                     }
+                }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel?.showAddCategory ?? false },
+            set: { viewModel?.showAddCategory = $0 }
+        )) {
+            if let vm = viewModel {
+                AddBudgetCategoryView { name, emoji, limit, category in
+                    vm.addCategory(name: name, emoji: emoji, limit: limit, category: category)
                 }
             }
         }
@@ -115,15 +145,13 @@ struct BudgetOverviewView: View {
                 amount: abs(vm.remainingBudget),
                 font: CrownTheme.largeCurrencyFont
             )
-            .foregroundStyle(vm.isOverBudget ? CrownTheme.budgetOverProgress : CrownTheme.income)
+            .foregroundStyle(overallBudgetColor(vm: vm))
 
             // Overall progress bar
             ProgressBarView(
-                progress: vm.totalBudgeted > 0
-                    ? vm.totalSpent / vm.totalBudgeted
-                    : 0,
+                progress: overallProgress(vm: vm),
                 height: 10,
-                tint: vm.isOverBudget ? CrownTheme.budgetOverProgress : CrownTheme.budgetProgress
+                tint: overallBudgetColor(vm: vm)
             )
 
             // Subtitle
@@ -131,14 +159,14 @@ struct BudgetOverviewView: View {
                 Text(vm.isOverBudget ? "Over budget" : "On track")
                     .font(CrownTheme.captionFont)
                     .fontWeight(.semibold)
-                    .foregroundStyle(vm.isOverBudget ? CrownTheme.budgetOverProgress : CrownTheme.income)
+                    .foregroundStyle(overallBudgetColor(vm: vm))
                 Spacer()
                 Text("\(vm.totalSpent, format: .currency(code: "USD").precision(.fractionLength(0))) of \(vm.totalBudgeted, format: .currency(code: "USD").precision(.fractionLength(0)))")
                     .font(CrownTheme.captionFont)
                     .foregroundStyle(.secondary)
             }
         }
-        .crownCard()
+        .crownCard(showDivider: false)
     }
 
     // MARK: - Income Section
@@ -179,7 +207,7 @@ struct BudgetOverviewView: View {
                     )
                 }
             }
-            .crownCard()
+            .crownCard(showDivider: false)
         }
     }
 
@@ -243,7 +271,7 @@ struct BudgetOverviewView: View {
                     }
                 }
             }
-            .crownCard(padding: 0)
+            .crownCard(padding: 0, showDivider: false)
         }
     }
 
@@ -281,7 +309,7 @@ struct BudgetOverviewView: View {
                         font: CrownTheme.captionFont,
                         colorCoded: false
                     )
-                    .foregroundStyle(isOver ? CrownTheme.budgetOverProgress : .primary)
+                    .foregroundStyle(CrownTheme.budgetColor(for: categoryProgress))
                     .frame(width: 70, alignment: .trailing)
                 }
             }
@@ -289,7 +317,7 @@ struct BudgetOverviewView: View {
             // Progress bar
             ProgressBarView(
                 progress: categoryProgress,
-                tint: isOver ? CrownTheme.budgetOverProgress : CrownTheme.budgetProgress
+                tint: CrownTheme.budgetColor(for: categoryProgress)
             )
 
             // Spent label
@@ -301,12 +329,21 @@ struct BudgetOverviewView: View {
                 if isOver {
                     Text("Over by \(abs(categoryRemaining), format: .currency(code: "USD").precision(.fractionLength(0)))")
                         .font(CrownTheme.caption2Font)
-                        .foregroundStyle(CrownTheme.budgetOverProgress)
+                        .foregroundStyle(CrownTheme.budgetRed)
                 }
             }
         }
         .padding(.horizontal, CrownTheme.cardPadding)
         .padding(.vertical, 10)
+    }
+    // MARK: - Helpers
+
+    private func overallProgress(vm: BudgetViewModel) -> Double {
+        vm.totalBudgeted > 0 ? vm.totalSpent / vm.totalBudgeted : 0
+    }
+
+    private func overallBudgetColor(vm: BudgetViewModel) -> Color {
+        CrownTheme.budgetColor(for: overallProgress(vm: vm))
     }
 }
 

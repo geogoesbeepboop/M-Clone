@@ -1,65 +1,29 @@
 import SwiftUI
 
-/// AI financial assistant chat powered by Claude.
+/// AI financial assistant chat — shows messages for the active session.
 ///
-/// When Claude is not configured (no API key), shows setup instructions instead.
-/// Conversation history is persisted in SwiftData across launches.
+/// Navigated to from `ChatHistoryView` with a session already loaded
+/// on the shared `ChatViewModel`.
 struct ChatView: View {
 
-    @Environment(\.accountRepository)     private var accountRepo
-    @Environment(\.transactionRepository) private var transactionRepo
-    @Environment(\.budgetRepository)      private var budgetRepo
-    @Environment(\.netWorthRepository)    private var netWorthRepo
-    @Environment(\.modelContext)          private var modelContext
+    let viewModel: ChatViewModel
 
-    @State private var viewModel: ChatViewModel?
+    @State private var showSettings = false
 
     var body: some View {
-        Group {
-            if AppConfig.isClaudeConfigured {
-                if let vm = viewModel {
-                    chatContent(vm: vm)
-                } else {
-                    ProgressView()
-                }
-            } else {
-                notConfiguredView
-            }
-        }
-        .navigationTitle("Financial Chat")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            if viewModel == nil {
-                let vm = ChatViewModel(
-                    accountRepo:     accountRepo,
-                    transactionRepo: transactionRepo,
-                    budgetRepo:      budgetRepo,
-                    netWorthRepo:    netWorthRepo,
-                    modelContext:    modelContext
-                )
-                viewModel = vm
-                vm.loadMessages()
-            }
-        }
-    }
-
-    // MARK: - Chat Content
-
-    @ViewBuilder
-    private func chatContent(vm: ChatViewModel) -> some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 12) {
-                        if vm.messages.isEmpty {
-                            suggestionsView(vm: vm)
+                        if viewModel.messages.isEmpty {
+                            suggestionsView
                         } else {
-                            ForEach(vm.messages) { message in
+                            ForEach(viewModel.messages) { message in
                                 ChatBubbleView(message: message)
                                     .id(message.id)
                             }
 
-                            if vm.isLoading {
+                            if viewModel.isLoading && !viewModel.streamingEnabled {
                                 typingIndicator
                             }
                         }
@@ -68,46 +32,79 @@ struct ChatView: View {
                     .padding(.top, CrownTheme.sectionSpacing)
                     .padding(.bottom, 12)
                 }
-                .onChange(of: vm.messages.count) {
-                    if let last = vm.messages.last {
+                .onChange(of: viewModel.messages.count) {
+                    if let last = viewModel.messages.last {
                         withAnimation(.easeOut(duration: 0.3)) {
                             proxy.scrollTo(last.id, anchor: .bottom)
                         }
                     }
                 }
-                .onChange(of: vm.isLoading) {
-                    if vm.isLoading, let last = vm.messages.last {
+                .onChange(of: viewModel.isLoading) {
+                    if viewModel.isLoading, let last = viewModel.messages.last {
                         withAnimation {
                             proxy.scrollTo(last.id, anchor: .bottom)
                         }
                     }
                 }
-            }
-
-            ChatInputView(
-                text: Binding(get: { vm.inputText }, set: { vm.inputText = $0 }),
-                isLoading: vm.isLoading,
-                onSend: { Task { await vm.sendMessage() } }
-            )
-        }
-        .background(CrownTheme.screenBackground)
-        .toolbar {
-            if !vm.messages.isEmpty {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        vm.clearHistory()
-                    } label: {
-                        Image(systemName: "trash")
-                            .foregroundStyle(CrownTheme.expense)
+                .onChange(of: viewModel.streamingContent) {
+                    // Auto-scroll as streaming content grows
+                    if let last = viewModel.messages.last {
+                        proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
             }
+
+            ChatInputView(
+                text: Binding(
+                    get: { viewModel.inputText },
+                    set: { viewModel.inputText = $0 }
+                ),
+                isLoading: viewModel.isLoading,
+                onSend: { Task { await viewModel.sendMessage() } }
+            )
+        }
+        .background(CrownTheme.screenBackground)
+        .navigationTitle(viewModel.currentSession?.title ?? "Chat")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 4) {
+                    // Model indicator chip
+                    Button {
+                        showSettings = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: viewModel.selectedProvider.iconName)
+                                .font(.caption2)
+                            Text(viewModel.modelDisplayName)
+                                .font(CrownTheme.caption2Font)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(CrownTheme.primaryBlue)
+                        .clipShape(Capsule())
+                    }
+
+                    if !viewModel.messages.isEmpty {
+                        Button {
+                            viewModel.clearHistory()
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(CrownTheme.expense)
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            ChatModelSettingsView(viewModel: viewModel)
         }
     }
 
     // MARK: - Suggestions (empty state)
 
-    private func suggestionsView(vm: ChatViewModel) -> some View {
+    private var suggestionsView: some View {
         VStack(spacing: 24) {
             VStack(spacing: 12) {
                 Image(systemName: "crown.fill")
@@ -123,19 +120,19 @@ struct ChatView: View {
             .padding(.top, 32)
 
             VStack(spacing: 10) {
-                ForEach(vm.suggestedQuestions, id: \.self) { question in
+                ForEach(viewModel.suggestedQuestions, id: \.self) { question in
                     Button {
-                        Task { await vm.sendSuggestedQuestion(question) }
+                        Task { await viewModel.sendSuggestedQuestion(question) }
                     } label: {
                         HStack {
                             Text(question)
                                 .font(CrownTheme.subheadFont)
-                                .foregroundStyle(CrownTheme.primaryBlue)
+                                .foregroundStyle(.primary)
                                 .multilineTextAlignment(.leading)
                             Spacer()
                             Image(systemName: "arrow.up.right")
                                 .font(.caption)
-                                .foregroundStyle(CrownTheme.primaryBlue.opacity(0.6))
+                                .foregroundStyle(.secondary)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -173,54 +170,4 @@ struct ChatView: View {
             Spacer(minLength: 48)
         }
     }
-
-    // MARK: - Not Configured View
-
-    private var notConfiguredView: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                Image(systemName: "key.slash")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.secondary)
-
-                VStack(spacing: 8) {
-                    Text("Claude API Not Configured")
-                        .font(CrownTheme.headlineFont)
-                    Text("Add your Anthropic API key to enable the AI chat assistant.")
-                        .font(CrownTheme.bodyFont)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    setupStep(number: "1", text: "Get your key at console.anthropic.com")
-                    setupStep(number: "2", text: "In Xcode: Product → Scheme → Edit Scheme")
-                    setupStep(number: "3", text: "Run → Arguments → Environment Variables")
-                    setupStep(number: "4", text: "Add: CLAUDE_API_KEY = your_key_here")
-                }
-                .padding()
-                .background(CrownTheme.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: CrownTheme.cardCornerRadius))
-            }
-            .padding(CrownTheme.horizontalPadding)
-        }
-        .background(CrownTheme.screenBackground)
-    }
-
-    private func setupStep(number: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(number)
-                .font(CrownTheme.caption2Font)
-                .foregroundStyle(.white)
-                .frame(width: 22, height: 22)
-                .background(CrownTheme.primaryBlue)
-                .clipShape(Circle())
-            Text(text)
-                .font(CrownTheme.captionFont)
-        }
-    }
-}
-
-#Preview {
-    NavigationStack { ChatView() }
 }

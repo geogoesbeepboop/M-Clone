@@ -1,6 +1,13 @@
 import Foundation
 import Observation
 
+struct DailySpending: Identifiable {
+    let id = UUID()
+    let dayOfMonth: Int
+    let cumulativeAmount: Double
+    let label: String  // "This month" or "Last month"
+}
+
 @Observable
 final class DashboardViewModel {
 
@@ -12,7 +19,9 @@ final class DashboardViewModel {
     // MARK: - State
     var accounts: [Account] = []
     var currentMonthTransactions: [Transaction] = []
+    var lastMonthTransactions: [Transaction] = []
     var pendingTransactions: [Transaction] = []
+    var recentTransactions: [Transaction] = []
     var recentSnapshots: [NetWorthSnapshot] = []
     var isLoading: Bool = false
     var errorMessage: String? = nil
@@ -55,6 +64,45 @@ final class DashboardViewModel {
             .map { $0 }
     }
 
+    var thisMonthTotal: Double {
+        currentMonthTransactions.filter { $0.isExpense }.reduce(0.0) { $0 + abs($1.amount) }
+    }
+
+    var lastMonthTotal: Double {
+        lastMonthTransactions.filter { $0.isExpense }.reduce(0.0) { $0 + abs($1.amount) }
+    }
+
+    var cumulativeSpendingData: [DailySpending] {
+        let cal = Calendar.current
+        let today = Date()
+        let dayOfMonth = cal.component(.day, from: today)
+
+        // This month — cumulate expenses by day
+        var thisMonthPoints: [DailySpending] = []
+        var runningTotal = 0.0
+        for day in 1...dayOfMonth {
+            let dayExpenses = currentMonthTransactions
+                .filter { $0.isExpense && cal.component(.day, from: $0.date) == day }
+                .reduce(0.0) { $0 + abs($1.amount) }
+            runningTotal += dayExpenses
+            thisMonthPoints.append(DailySpending(dayOfMonth: day, cumulativeAmount: runningTotal, label: "This month"))
+        }
+
+        // Last month — cumulate full month
+        let lastMonthDays = cal.range(of: .day, in: .month, for: today.monthOffset(by: -1))?.count ?? 30
+        var lastMonthPoints: [DailySpending] = []
+        runningTotal = 0.0
+        for day in 1...lastMonthDays {
+            let dayExpenses = lastMonthTransactions
+                .filter { $0.isExpense && cal.component(.day, from: $0.date) == day }
+                .reduce(0.0) { $0 + abs($1.amount) }
+            runningTotal += dayExpenses
+            lastMonthPoints.append(DailySpending(dayOfMonth: day, cumulativeAmount: runningTotal, label: "Last month"))
+        }
+
+        return thisMonthPoints + lastMonthPoints
+    }
+
     var netWorthChange: Double {
         guard recentSnapshots.count >= 2 else { return 0 }
         let previous = recentSnapshots[recentSnapshots.count - 2].netWorth
@@ -93,7 +141,12 @@ final class DashboardViewModel {
         currentMonthTransactions = transactionRepo.fetchForMonth(
             month: now.month, year: now.year
         )
+        let lastMonth = now.monthOffset(by: -1)
+        lastMonthTransactions = transactionRepo.fetchForMonth(
+            month: lastMonth.month, year: lastMonth.year
+        )
         pendingTransactions = transactionRepo.fetchPending()
+        recentTransactions = transactionRepo.fetchAll(limit: 4)
         recentSnapshots = netWorthRepo.fetchForPastMonths(12)
     }
 

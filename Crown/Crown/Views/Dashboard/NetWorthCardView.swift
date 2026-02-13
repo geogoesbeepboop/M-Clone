@@ -17,36 +17,30 @@ struct NetWorthCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header
+            // Header: "Net worth" + "..." menu (matches other card headers)
             HStack {
-                Text("Net Worth")
+                Text("Net worth")
+                    .font(CrownTheme.headlineFont)
+                Spacer()
+                Image(systemName: "ellipsis")
                     .font(CrownTheme.captionFont)
                     .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .kerning(0.5)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(CrownTheme.captionFont)
-                    .foregroundStyle(.tertiary)
             }
 
-            // Main figure in BofA navy
-            CurrencyText(amount: netWorth, font: CrownTheme.largeCurrencyFont)
+            // Amount
+            CurrencyText(amount: netWorth, font: CrownTheme.currencyFont)
                 .foregroundStyle(Color.adaptiveNavy)
 
-            // Trend indicator
+            // Change indicator
             HStack(spacing: 4) {
-                Image(systemName: trendIcon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(trendColor)
                 CurrencyText(amount: abs(change), font: CrownTheme.captionFont)
-                    .foregroundStyle(trendColor)
-                Text(String(format: "(%.1f%%)", abs(changePercent)))
-                    .font(CrownTheme.captionFont)
-                    .foregroundStyle(trendColor)
-                Text("this month")
+                    .foregroundStyle(.secondary)
+                Text("1 month")
                     .font(CrownTheme.captionFont)
                     .foregroundStyle(.secondary)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
             }
 
             // Mini sparkline

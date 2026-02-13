@@ -30,6 +30,7 @@ final class BudgetViewModel {
     var monthTransactions: [Transaction] = []
     var isLoading: Bool = false
     var showAddCategory: Bool = false
+    var sortAscending: Bool = false
 
     // MARK: - Computed Aggregates
 

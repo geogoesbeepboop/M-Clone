@@ -121,29 +121,17 @@ struct SettingsView: View {
             Section {
                 Toggle(isOn: Binding(
                     get: { vm.useMockData },
-                    set: { newValue in
-                        vm.useMockData = newValue
-                        if newValue { vm.seedMockData() }
-                    }
+                    set: { vm.useMockData = $0 }
                 )) {
                     Label("Use Demo Data", systemImage: "cylinder.fill")
                 }
                 .tint(CrownTheme.primaryBlue)
-
-                if vm.useMockData {
-                    Button {
-                        vm.seedMockData()
-                    } label: {
-                        Label("Reload Demo Data", systemImage: "arrow.clockwise")
-                            .foregroundStyle(CrownTheme.primaryBlue)
-                    }
-                }
             } header: {
                 Text("Demo Data")
             } footer: {
                 Text(vm.useMockData
-                    ? "The app is populated with realistic sample accounts and transactions. Toggle off once you connect a real bank account."
-                    : "Demo data is off. Connect a bank account above to see your real financial data."
+                    ? "Showing sample accounts and transactions. Toggle off to see your real bank data."
+                    : "Showing your real bank data. If no bank is connected, sample data is shown as a fallback."
                 )
             }
 

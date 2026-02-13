@@ -8,22 +8,27 @@ struct DashboardView: View {
     @Environment(\.selectedTab)          private var selectedTab
 
     @State private var viewModel: DashboardViewModel?
-    @State private var showSettings = false
-    @State private var showReports  = false
+    @State private var showSettings      = false
+    @State private var showReports       = false
+    @State private var showNotifications = false
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: CrownTheme.sectionSpacing) {
-                // Greeting header
-                greetingHeader
-
                 if let vm = viewModel {
                     if vm.isLoading {
                         ProgressView()
                             .frame(maxWidth: .infinity)
                             .padding(.top, 60)
                     } else {
-                        // Net Worth (compact hero) — taps to Accounts tab
+                        // 1. Spending (cumulative line chart)
+                        SpendingCardView(
+                            spendingData: vm.cumulativeSpendingData,
+                            thisMonthTotal: vm.thisMonthTotal,
+                            lastMonthTotal: vm.lastMonthTotal
+                        )
+
+                        // 2. Net Worth — taps to Accounts tab
                         Button {
                             selectedTab.wrappedValue = .accounts
                         } label: {
@@ -36,11 +41,19 @@ struct DashboardView: View {
                         }
                         .buttonStyle(.plain)
 
-                        // Top Spending
-                        SpendingCardView(categories: vm.topSpendingCategories)
+                        // 3. Recent Transactions
+                        RecentTransactionsCardView(
+                            transactions: vm.recentTransactions
+                        )
 
-                        // Pending
-                        UpcomingBillsCardView(pendingTransactions: vm.pendingTransactions)
+                        // 4. Recurring (empty state)
+                        RecurringCardView()
+
+                        // 5. Investments (empty state)
+                        InvestmentsCardView()
+
+                        // 6. Goals (empty state)
+                        GoalsCardView()
                     }
                 }
             }
@@ -52,11 +65,20 @@ struct DashboardView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    showReports = true
-                } label: {
-                    Image(systemName: "chart.bar.doc.horizontal")
-                        .foregroundStyle(CrownTheme.primaryBlue)
+                HStack(spacing: 4) {
+                    Button {
+                        showReports = true
+                    } label: {
+                        Image(systemName: "chart.bar.doc.horizontal")
+                            .foregroundStyle(CrownTheme.primaryBlue)
+                    }
+
+                    Button {
+                        showNotifications = true
+                    } label: {
+                        Image(systemName: "bell")
+                            .foregroundStyle(CrownTheme.primaryBlue)
+                    }
                 }
             }
 
@@ -87,6 +109,9 @@ struct DashboardView: View {
         .sheet(isPresented: $showReports) {
             ReportsView()
         }
+        .sheet(isPresented: $showNotifications) {
+            NotificationsView()
+        }
         .onAppear {
             if viewModel == nil {
                 let created = DashboardViewModel(
@@ -97,35 +122,6 @@ struct DashboardView: View {
                 viewModel = created
                 created.loadData()
             }
-        }
-    }
-
-    // MARK: - Greeting Header
-
-    private var greetingHeader: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greetingText)
-                    .font(CrownTheme.captionFont)
-                    .foregroundStyle(.secondary)
-                Text(Date().formatted(.dateTime.weekday(.wide).month().day()))
-                    .font(CrownTheme.subheadFont)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            Image(systemName: "crown.fill")
-                .font(.title2)
-                .foregroundStyle(CrownTheme.primaryBlue)
-        }
-        .padding(.top, 8)
-    }
-
-    private var greetingText: String {
-        let hour = Calendar.current.component(.hour, from: Date())
-        switch hour {
-        case 0..<12:  return "Good morning"
-        case 12..<17: return "Good afternoon"
-        default:      return "Good evening"
         }
     }
 }

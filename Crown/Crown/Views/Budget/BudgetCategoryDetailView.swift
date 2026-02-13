@@ -22,6 +22,8 @@ struct BudgetCategoryDetailView: View {
 
     private var remaining: Double { max(category.monthlyLimit - spent, 0) }
     private var isOverBudget: Bool { spent > category.monthlyLimit }
+    private var progress: Double { category.monthlyLimit > 0 ? spent / category.monthlyLimit : 0 }
+    private var spentColor: Color { CrownTheme.budgetColor(for: progress) }
 
     var body: some View {
         ScrollView {
@@ -81,7 +83,7 @@ struct BudgetCategoryDetailView: View {
                         innerRadius: .ratio(0.65),
                         angularInset: 2
                     )
-                    .foregroundStyle(isOverBudget ? CrownTheme.expense : CrownTheme.primaryBlue)
+                    .foregroundStyle(spentColor)
                     .cornerRadius(4)
 
                     SectorMark(
@@ -105,7 +107,7 @@ struct BudgetCategoryDetailView: View {
 
             // Legend
             HStack(spacing: 20) {
-                LegendItem(color: isOverBudget ? CrownTheme.expense : CrownTheme.primaryBlue, label: "Spent")
+                LegendItem(color: spentColor, label: "Spent")
                 LegendItem(color: Color(.secondarySystemFill), label: "Remaining")
             }
         }

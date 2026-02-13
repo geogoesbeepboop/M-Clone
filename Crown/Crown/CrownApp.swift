@@ -32,7 +32,8 @@ struct CrownApp: App {
             BudgetCategory.self,
             Budget.self,
             NetWorthSnapshot.self,
-            ChatMessage.self
+            ChatMessage.self,
+            ChatSession.self
         ])
         let modelConfiguration = ModelConfiguration(
             schema: schema,
@@ -60,9 +61,10 @@ struct CrownApp: App {
                     NetWorthRepository(modelContext: sharedModelContainer.mainContext))
                 .preferredColorScheme(preferredColorScheme)
                 .onAppear {
-                    if AppConfig.useMockData {
-                        MockDataService.seedIfNeeded(context: sharedModelContainer.mainContext)
-                    }
+                    // Always ensure mock data exists for fallback / toggle-on use.
+                    // Repo-level filtering handles showing the right data source.
+                    let ctx = sharedModelContainer.mainContext
+                    MockDataService.seedIfNeeded(context: ctx)
                 }
         }
         .modelContainer(sharedModelContainer)

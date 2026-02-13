@@ -11,6 +11,14 @@ struct MainTabView: View {
     @State private var showChat = false
     @State private var selectedTab: CrownTab = .dashboard
 
+    @Environment(\.accountRepository)     private var accountRepo
+    @Environment(\.transactionRepository) private var transactionRepo
+    @Environment(\.budgetRepository)      private var budgetRepo
+    @Environment(\.netWorthRepository)    private var netWorthRepo
+    @Environment(\.modelContext)          private var modelContext
+
+    @State private var chatViewModel: ChatViewModel?
+
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Dashboard", systemImage: "house.fill", value: .dashboard) {
@@ -48,9 +56,39 @@ struct MainTabView: View {
         .environment(\.selectedTab, $selectedTab)
         .sheet(isPresented: $showChat) {
             NavigationStack {
-                ChatView()
+                ChatHistoryView(viewModel: resolvedChatViewModel)
             }
         }
+        .task {
+            ensureChatViewModel()
+        }
+    }
+
+    /// Returns the existing ViewModel or creates one on demand.
+    /// This guarantees the sheet always receives a non-nil ViewModel.
+    private var resolvedChatViewModel: ChatViewModel {
+        if let vm = chatViewModel { return vm }
+        let vm = ChatViewModel(
+            accountRepo:     accountRepo,
+            transactionRepo: transactionRepo,
+            budgetRepo:      budgetRepo,
+            netWorthRepo:    netWorthRepo,
+            modelContext:    modelContext
+        )
+        // Schedule state update for next run loop to avoid mutating state during body
+        DispatchQueue.main.async { chatViewModel = vm }
+        return vm
+    }
+
+    private func ensureChatViewModel() {
+        guard chatViewModel == nil else { return }
+        chatViewModel = ChatViewModel(
+            accountRepo:     accountRepo,
+            transactionRepo: transactionRepo,
+            budgetRepo:      budgetRepo,
+            netWorthRepo:    netWorthRepo,
+            modelContext:    modelContext
+        )
     }
 }
 

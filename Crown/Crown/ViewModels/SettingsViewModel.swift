@@ -66,7 +66,9 @@ final class SettingsViewModel {
     // MARK: - Data Loading
 
     func loadData() {
-        connectedAccounts = accountRepo.fetchVisible().filter { $0.plaidAccessToken != nil }
+        // Use fetchAll() (unfiltered) so connected accounts always appear
+        // in Settings regardless of mock data toggle state
+        connectedAccounts = accountRepo.fetchAll().filter { $0.plaidAccessToken != nil && !$0.isHidden }
     }
 
     // MARK: - Plaid Link Flow
@@ -108,8 +110,8 @@ final class SettingsViewModel {
             let accessToken = try await plaidService.exchangePublicToken(publicToken)
             print("[Crown/Plaid] exchangePublicToken() succeeded. Syncing accounts…")
 
-            // Clear mock data before syncing real accounts
-            MockDataService.clearMockData(context: modelContext)
+            // Switch to real data mode — mock data stays in DB for toggle-back,
+            // repo-level filtering will show only Plaid data
             AppConfig.useMockData = false
 
             let accountCount = try await syncService.syncAccounts(accessToken: accessToken)

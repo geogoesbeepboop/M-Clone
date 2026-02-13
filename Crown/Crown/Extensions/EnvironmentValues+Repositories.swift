@@ -9,7 +9,8 @@ private struct FallbackModelContext {
     static let context: ModelContext = {
         let schema = Schema([
             Account.self, Transaction.self, BudgetCategory.self,
-            Budget.self, NetWorthSnapshot.self, ChatMessage.self
+            Budget.self, NetWorthSnapshot.self, ChatMessage.self,
+            ChatSession.self
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         let container = try! ModelContainer(for: schema, configurations: [config])

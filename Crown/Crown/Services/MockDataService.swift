@@ -8,44 +8,27 @@ struct MockDataService {
     // MARK: - Entry point
 
     static func seedIfNeeded(context: ModelContext) {
-        let accountDescriptor = FetchDescriptor<Account>()
-        let existingCount = (try? context.fetchCount(accountDescriptor)) ?? 0
-        guard existingCount == 0 else { return }
+        // Check specifically for mock accounts (those without a Plaid ID).
+        // This allows seeding even when Plaid accounts exist, so both
+        // data sources coexist and repo-level filtering selects the right one.
+        let descriptor = FetchDescriptor<Account>()
+        let allAccounts = (try? context.fetch(descriptor)) ?? []
+        let hasMockAccounts = allAccounts.contains { $0.plaidAccountId == nil && !$0.isHidden }
+        guard !hasMockAccounts else { return }
 
         let accounts = createAccounts(context: context)
         createTransactions(context: context, accounts: accounts)
-        createBudgetCategories(context: context)
-        createNetWorthSnapshots(context: context)
 
-        try? context.save()
-    }
-
-    /// Removes all mock data — accounts without a Plaid ID (and their cascaded transactions),
-    /// orphan mock transactions, and all net worth snapshots (which get regenerated from real data).
-    /// Budget categories are kept since the user may have customized them.
-    static func clearMockData(context: ModelContext) {
-        // Delete mock accounts (cascade deletes their transactions)
-        let accountDescriptor = FetchDescriptor<Account>()
-        if let accounts = try? context.fetch(accountDescriptor) {
-            for account in accounts where account.plaidAccountId == nil {
-                context.delete(account)
-            }
+        // Budget categories are app-level config — only seed if none exist
+        let budgetDescriptor = FetchDescriptor<BudgetCategory>()
+        if (try? context.fetchCount(budgetDescriptor)) ?? 0 == 0 {
+            createBudgetCategories(context: context)
         }
 
-        // Delete any remaining mock transactions (orphaned or not tied to a Plaid account)
-        let txDescriptor = FetchDescriptor<Transaction>()
-        if let transactions = try? context.fetch(txDescriptor) {
-            for tx in transactions where tx.plaidTransactionId == nil {
-                context.delete(tx)
-            }
-        }
-
-        // Clear all net worth snapshots — a fresh snapshot is taken after sync
+        // Net worth snapshots — only seed if none exist
         let snapshotDescriptor = FetchDescriptor<NetWorthSnapshot>()
-        if let snapshots = try? context.fetch(snapshotDescriptor) {
-            for snapshot in snapshots {
-                context.delete(snapshot)
-            }
+        if (try? context.fetchCount(snapshotDescriptor)) ?? 0 == 0 {
+            createNetWorthSnapshots(context: context)
         }
 
         try? context.save()
