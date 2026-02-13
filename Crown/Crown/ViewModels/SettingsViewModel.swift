@@ -108,6 +108,10 @@ final class SettingsViewModel {
             let accessToken = try await plaidService.exchangePublicToken(publicToken)
             print("[Crown/Plaid] exchangePublicToken() succeeded. Syncing accounts…")
 
+            // Clear mock data before syncing real accounts
+            MockDataService.clearMockData(context: modelContext)
+            AppConfig.useMockData = false
+
             let accountCount = try await syncService.syncAccounts(accessToken: accessToken)
             print("[Crown/Plaid] syncAccounts() done — \(accountCount) accounts. Syncing transactions…")
             let txCount      = try await syncService.syncTransactions(accessToken: accessToken)

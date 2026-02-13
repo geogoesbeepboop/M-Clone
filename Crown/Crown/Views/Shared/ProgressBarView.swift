@@ -1,13 +1,14 @@
 import SwiftUI
 
-/// Horizontal progress bar that turns red when progress exceeds 100%.
+/// Horizontal progress bar that changes color when progress exceeds 100%.
 struct ProgressBarView: View {
     let progress: Double   // 0.0 to 1.0+; values > 1.0 indicate over-budget
     var height: CGFloat = 8
     var tint: Color = CrownTheme.primaryBlue
+    var overTint: Color? = nil
 
     private var effectiveColor: Color {
-        progress > 1.0 ? CrownTheme.expense : tint
+        progress > 1.0 ? (overTint ?? CrownTheme.budgetOverProgress) : tint
     }
 
     private var clampedProgress: Double {

@@ -4,6 +4,7 @@ import Charts
 /// Cash Flow tab — monthly income vs expenses summary with 6-month trend chart.
 struct CashFlowView: View {
     @Environment(\.transactionRepository) private var transactionRepo
+    @Environment(\.showChat)             private var showChat
 
     @State private var viewModel: CashFlowViewModel?
 
@@ -17,7 +18,17 @@ struct CashFlowView: View {
             }
         }
         .navigationTitle("Cash Flow")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showChat.wrappedValue = true
+                } label: {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .foregroundStyle(CrownTheme.primaryBlue)
+                }
+            }
+        }
         .onAppear {
             if viewModel == nil {
                 let vm = CashFlowViewModel(transactionRepo: transactionRepo)

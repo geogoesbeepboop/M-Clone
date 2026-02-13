@@ -1,13 +1,18 @@
 import SwiftUI
+import SwiftData
 import Charts
 
 /// Accounts tab — shows net worth overview with segmented filtering,
 /// a 12-month trend chart, and grouped account lists.
 struct AccountsView: View {
-    @Environment(\.accountRepository)  private var accountRepo
-    @Environment(\.netWorthRepository) private var netWorthRepo
+    @Environment(\.accountRepository)     private var accountRepo
+    @Environment(\.transactionRepository) private var transactionRepo
+    @Environment(\.netWorthRepository)    private var netWorthRepo
+    @Environment(\.modelContext)          private var modelContext
+    @Environment(\.showChat)             private var showChat
 
     @State private var viewModel: AccountsViewModel?
+    @State private var settingsVM: SettingsViewModel?
 
     var body: some View {
         Group {
@@ -19,7 +24,64 @@ struct AccountsView: View {
             }
         }
         .navigationTitle("Accounts")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 4) {
+                    Button {
+                        Task {
+                            let svm = ensureSettingsVM()
+                            await svm.startConnectFlow()
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                            .foregroundStyle(CrownTheme.primaryBlue)
+                    }
+
+                    Button {
+                        showChat.wrappedValue = true
+                    } label: {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .foregroundStyle(CrownTheme.primaryBlue)
+                    }
+                }
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { settingsVM?.isConnectingAccount == true && settingsVM?.linkToken != nil },
+            set: { if !$0 { settingsVM?.isConnectingAccount = false } }
+        )) {
+            if let token = settingsVM?.linkToken {
+                ConnectAccountView(
+                    linkToken: token,
+                    onSuccess: { publicToken, metadata in
+                        Task {
+                            await settingsVM?.handlePlaidSuccess(publicToken: publicToken, metadata: metadata)
+                            viewModel?.refresh()
+                        }
+                    },
+                    onExit: {
+                        settingsVM?.isConnectingAccount = false
+                    }
+                )
+            }
+        }
+        .alert("Error", isPresented: Binding(
+            get: { settingsVM?.errorMessage != nil },
+            set: { if !$0 { settingsVM?.errorMessage = nil } }
+        )) {
+            Button("OK") { settingsVM?.errorMessage = nil }
+        } message: {
+            Text(settingsVM?.errorMessage ?? "")
+        }
+        .alert("Success", isPresented: Binding(
+            get: { settingsVM?.successMessage != nil },
+            set: { if !$0 { settingsVM?.successMessage = nil } }
+        )) {
+            Button("OK") { settingsVM?.successMessage = nil }
+        } message: {
+            Text(settingsVM?.successMessage ?? "")
+        }
         .onAppear {
             if viewModel == nil {
                 let vm = AccountsViewModel(accountRepo: accountRepo, netWorthRepo: netWorthRepo)
@@ -187,6 +249,21 @@ struct AccountsView: View {
         }
         .padding(.bottom, 8)
         .crownCard(padding: 0)
+    }
+
+    // MARK: - Helpers
+
+    @discardableResult
+    private func ensureSettingsVM() -> SettingsViewModel {
+        if let existing = settingsVM { return existing }
+        let created = SettingsViewModel(
+            accountRepo:     accountRepo,
+            transactionRepo: transactionRepo,
+            netWorthRepo:    netWorthRepo,
+            modelContext:    modelContext
+        )
+        settingsVM = created
+        return created
     }
 }
 

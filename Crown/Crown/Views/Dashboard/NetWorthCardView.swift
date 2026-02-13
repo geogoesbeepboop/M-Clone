@@ -65,7 +65,7 @@ struct NetWorthCardView: View {
                     )
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [CrownTheme.primaryBlue.opacity(0.25), .clear],
+                            colors: [CrownTheme.primaryBlue.opacity(0.4), CrownTheme.primaryBlue.opacity(0.05), .clear],
                             startPoint: .top,
                             endPoint: .bottom
                         )

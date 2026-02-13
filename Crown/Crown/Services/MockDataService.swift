@@ -20,6 +20,37 @@ struct MockDataService {
         try? context.save()
     }
 
+    /// Removes all mock data — accounts without a Plaid ID (and their cascaded transactions),
+    /// orphan mock transactions, and all net worth snapshots (which get regenerated from real data).
+    /// Budget categories are kept since the user may have customized them.
+    static func clearMockData(context: ModelContext) {
+        // Delete mock accounts (cascade deletes their transactions)
+        let accountDescriptor = FetchDescriptor<Account>()
+        if let accounts = try? context.fetch(accountDescriptor) {
+            for account in accounts where account.plaidAccountId == nil {
+                context.delete(account)
+            }
+        }
+
+        // Delete any remaining mock transactions (orphaned or not tied to a Plaid account)
+        let txDescriptor = FetchDescriptor<Transaction>()
+        if let transactions = try? context.fetch(txDescriptor) {
+            for tx in transactions where tx.plaidTransactionId == nil {
+                context.delete(tx)
+            }
+        }
+
+        // Clear all net worth snapshots — a fresh snapshot is taken after sync
+        let snapshotDescriptor = FetchDescriptor<NetWorthSnapshot>()
+        if let snapshots = try? context.fetch(snapshotDescriptor) {
+            for snapshot in snapshots {
+                context.delete(snapshot)
+            }
+        }
+
+        try? context.save()
+    }
+
     // MARK: - Accounts
 
     private static func createAccounts(context: ModelContext) -> (

@@ -27,7 +27,7 @@ struct ChatView: View {
             }
         }
         .navigationTitle("Financial Chat")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if viewModel == nil {
                 let vm = ChatViewModel(

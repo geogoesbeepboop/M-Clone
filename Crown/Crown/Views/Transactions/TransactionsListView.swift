@@ -15,6 +15,7 @@ import SwiftUI
 struct TransactionsListView: View {
     @Environment(\.transactionRepository) private var transactionRepo
     @Environment(\.accountRepository)    private var accountRepo
+    @Environment(\.showChat)            private var showChat
 
     @State private var viewModel: TransactionsViewModel?
     @State private var showFilter      = false
@@ -30,7 +31,7 @@ struct TransactionsListView: View {
             }
         }
         .navigationTitle("Transactions")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if viewModel == nil {
                 let vm = TransactionsViewModel(transactionRepo: transactionRepo)
@@ -80,17 +81,26 @@ struct TransactionsListView: View {
         )
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showFilter = true
-                } label: {
-                    Image(systemName: vm.hasActiveFilters
-                          ? "line.3.horizontal.decrease.circle.fill"
-                          : "line.3.horizontal.decrease.circle")
-                    .foregroundStyle(vm.hasActiveFilters
-                                     ? CrownTheme.accentRed
-                                     : CrownTheme.primaryBlue)
+                HStack(spacing: 4) {
+                    Button {
+                        showFilter = true
+                    } label: {
+                        Image(systemName: vm.hasActiveFilters
+                              ? "line.3.horizontal.decrease.circle.fill"
+                              : "line.3.horizontal.decrease.circle")
+                        .foregroundStyle(vm.hasActiveFilters
+                                         ? CrownTheme.accentRed
+                                         : CrownTheme.primaryBlue)
+                    }
+                    .accessibilityLabel(vm.hasActiveFilters ? "Filters active" : "Filter transactions")
+
+                    Button {
+                        showChat.wrappedValue = true
+                    } label: {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .foregroundStyle(CrownTheme.primaryBlue)
+                    }
                 }
-                .accessibilityLabel(vm.hasActiveFilters ? "Filters active" : "Filter transactions")
             }
         }
         .refreshable {

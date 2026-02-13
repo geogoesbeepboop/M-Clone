@@ -4,20 +4,12 @@ struct DashboardView: View {
     @Environment(\.accountRepository)     private var accountRepo
     @Environment(\.transactionRepository) private var transactionRepo
     @Environment(\.netWorthRepository)    private var netWorthRepo
+    @Environment(\.showChat)             private var showChat
+    @Environment(\.selectedTab)          private var selectedTab
 
     @State private var viewModel: DashboardViewModel?
     @State private var showSettings = false
     @State private var showReports  = false
-
-    private var vm: DashboardViewModel {
-        if let viewModel { return viewModel }
-        let created = DashboardViewModel(
-            accountRepo: accountRepo,
-            transactionRepo: transactionRepo,
-            netWorthRepo: netWorthRepo
-        )
-        return created
-    }
 
     var body: some View {
         ScrollView {
@@ -31,13 +23,18 @@ struct DashboardView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 60)
                     } else {
-                        // Net Worth (compact hero)
-                        NetWorthCardView(
-                            netWorth:       vm.totalNetWorth,
-                            change:         vm.netWorthChange,
-                            changePercent:  vm.netWorthChangePercent,
-                            snapshots:      vm.recentSnapshots
-                        )
+                        // Net Worth (compact hero) — taps to Accounts tab
+                        Button {
+                            selectedTab.wrappedValue = .accounts
+                        } label: {
+                            NetWorthCardView(
+                                netWorth:       vm.totalNetWorth,
+                                change:         vm.netWorthChange,
+                                changePercent:  vm.netWorthChangePercent,
+                                snapshots:      vm.recentSnapshots
+                            )
+                        }
+                        .buttonStyle(.plain)
 
                         // Top Spending
                         SpendingCardView(categories: vm.topSpendingCategories)
@@ -52,21 +49,30 @@ struct DashboardView: View {
         }
         .background(CrownTheme.screenBackground)
         .navigationTitle("Dashboard")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showReports = true
+                } label: {
+                    Image(systemName: "chart.bar.doc.horizontal")
+                        .foregroundStyle(CrownTheme.primaryBlue)
+                }
+            }
+
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 4) {
-                    Button {
-                        showReports = true
-                    } label: {
-                        Image(systemName: "chart.bar.doc.horizontal")
-                            .foregroundStyle(CrownTheme.primaryBlue)
-                    }
-
                     Button {
                         showSettings = true
                     } label: {
                         Image(systemName: "gearshape")
+                            .foregroundStyle(CrownTheme.primaryBlue)
+                    }
+
+                    Button {
+                        showChat.wrappedValue = true
+                    } label: {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
                             .foregroundStyle(CrownTheme.primaryBlue)
                     }
                 }

@@ -49,6 +49,16 @@ final class BudgetViewModel {
         totalSpent > totalBudgeted
     }
 
+    /// Total income for the selected month.
+    var totalIncome: Double {
+        monthTransactions.filter { $0.isIncome }.reduce(0) { $0 + $1.amount }
+    }
+
+    /// Total expenses for the selected month (absolute value).
+    var totalExpenses: Double {
+        monthTransactions.filter { $0.isExpense }.reduce(0) { $0 + $1.absoluteAmount }
+    }
+
     // MARK: - Per-category helpers
 
     /// Returns total absolute spending for a given category in the selected month.
@@ -63,6 +73,11 @@ final class BudgetViewModel {
     func progress(for budgetCategory: BudgetCategory) -> Double {
         guard budgetCategory.monthlyLimit > 0 else { return 0 }
         return spent(for: budgetCategory) / budgetCategory.monthlyLimit
+    }
+
+    /// Returns the remaining budget for a category (negative if over-budget).
+    func remaining(for budgetCategory: BudgetCategory) -> Double {
+        budgetCategory.monthlyLimit - spent(for: budgetCategory)
     }
 
     /// Returns transactions for a specific budget category in the selected month.

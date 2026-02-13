@@ -27,6 +27,11 @@ enum CrownTheme {
     static let expense = Color(hex: 0xE31837)   // money-out red (matches BofA red)
     static let warning = Color(hex: 0xE57200)   // amber
 
+    /// Budget progress bar — teal, distinct from BofA blue divider
+    static let budgetProgress     = Color(hex: 0x00897B)  // teal 600
+    /// Budget over-budget — amber/orange, distinct from BofA red divider
+    static let budgetOverProgress = Color(hex: 0xE57200)  // amber (same as warning)
+
     // MARK: - Adaptive Backgrounds (auto light/dark)
 
     static let cardBackground      = Color(.systemBackground)
